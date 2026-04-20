@@ -1,0 +1,41 @@
+mixed-port: 1089
+allow-lan: true
+bind-address: "*"
+mode: rule
+log-level: info
+external-controller: "127.0.0.1:9090"
+
+proxies:
+  - {
+      name: "GCJ",
+      server: c67s3.portablesubmarines.com,
+      port: 18112,
+      type: vmess,
+      uuid: 3c84306a-ea40-42eb-88b1-c61e68cb6e21,
+      alterId: 0,
+      cipher: auto,
+      tls: false,
+    }  
+
+proxy-groups:
+    - {
+          name: Auto,
+          type: fallback,
+          proxies:
+              [
+                  "GCJ",
+              ],
+          url: "http://www.gstatic.com/generate_204",
+          interval: 120,
+      }
+
+
+rules:
+    - "DOMAIN-SUFFIX,local,DIRECT"
+    - "IP-CIDR,127.0.0.0/8,DIRECT"
+    - "IP-CIDR,172.16.0.0/12,DIRECT"
+    - "IP-CIDR,192.168.0.0/16,DIRECT"
+    - "IP-CIDR,10.0.0.0/8,DIRECT"
+    - "IP-CIDR6,fe80::/10,DIRECT"
+    - "GEOIP,CN,DIRECT"
+    - "MATCH,Auto"
