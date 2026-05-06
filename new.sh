@@ -13,15 +13,15 @@ function log() {
 # 清空日志文件
 >$LOG_FILE
 
-# 读取主机 IP
-read -p "请输入主机 IP 地址:" HOST_IP
+# 读取主机 IP (已不使用 SCP 远程拷贝，如无需可跳过)
+# read -p "请输入主机 IP 地址:" HOST_IP
 
 # 读取默认用户名
-read -p "请输入默认用户名:" DEFAULT_USER
+# read -p "请输入默认用户名:" DEFAULT_USER
 
 # 读取默认密码
-read -s -p "请输入密码:" DEFAULT_PASSWORD
-echo
+# read -s -p "请输入密码:" DEFAULT_PASSWORD
+# echo
 
 # ROS 版本
 ROS1_VERSION="noetic"
@@ -122,11 +122,10 @@ function copy_firmware() {
     log "开始拷贝固件"
     sudo rm -rf ~/Desktop/3D-Lidar/ ~/Desktop/NV/ ~/Desktop/rplidar_sdk ~/Desktop/sllidar_ros2 ~/Desktop/2D-Lidar ~/Desktop/HesaiLidar_General_SDK
 
-    sudo apt install sshpass -y
-
     mkdir -p ~/Desktop/{3D-Lidar,NV}/src
 
-    sshpass -p $DEFAULT_PASSWORD scp -r $DEFAULT_USER@$HOST_IP:~/Desktop/Code/test_weidong/NV/Carter_init/* ~/Desktop/NV/
+    # 从本地 Carterinit 目录拷贝文件
+    cp -r ~/Carterinit/* ~/Desktop/NV/
 
     cd ~/Desktop/NV/
     chmod +x *.sh
@@ -228,7 +227,7 @@ function main() {
     #获取主机known_hosts
     # ssh-keyscan -H $HOST_IP >>~/.ssh/known_hosts
 
-    # copy_firmware
+    copy_firmware
     install_tools
     # export http_proxy=http://127.0.0.1:1089
     # export https_proxy=http://127.0.0.1:1089
