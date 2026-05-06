@@ -68,9 +68,11 @@ function install_ros2() {
 
     cd ~/Desktop/NV/
     sudo chmod +x *.sh
-    ./import_ros_key.sh
 
-    sudo sh -c "echo deb $ROS2_REPO $(lsb_release -sc) main > /etc/apt/sources.list.d/ros2-latest.list"
+    # 导入 ROS GPG 密钥 (keyring 方式)
+    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] $ROS2_REPO $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
     sudo apt update
 
