@@ -31,8 +31,8 @@ ROS2_VERSION="foxy"
 ROSKEY="https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc"
 
 # ROS 源
-ROS1_REPO="https://mirrors.ustc.edu.cn/ros/ubuntu"
-ROS2_REPO="https://mirrors.ustc.edu.cn/ros2/ubuntu"
+ROS1_REPO="http://packages.ros.org/ros/ubuntu"
+ROS2_REPO="http://packages.ros.org/ros2/ubuntu"
 
 # 安装 ROS 1
 function install_ros1() {
