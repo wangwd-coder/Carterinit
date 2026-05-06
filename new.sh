@@ -2,6 +2,11 @@
 # 设置退出时遇到错误自动退出
 set -e
 
+# 修复 sudo 运行时 ~ 路径为 /root 的问题
+if [ -n "$SUDO_USER" ]; then
+    export HOME=$(eval echo ~$SUDO_USER)
+fi
+
 # 日志文件
 LOG_FILE=/tmp/install.log
 
@@ -126,13 +131,8 @@ function copy_firmware() {
 
     mkdir -p ~/Desktop/{3D-Lidar,NV}/src
 
-    # 从本地 Carterinit 目录拷贝文件（兼容 sudo 运行）
-    if [ -n "$SUDO_USER" ]; then
-        REAL_HOME=$(eval echo ~$SUDO_USER)
-    else
-        REAL_HOME=$HOME
-    fi
-    cp -r $REAL_HOME/Carterinit/* ~/Desktop/NV/
+    # 从本地 Carterinit 目录拷贝文件
+    cp -r ~/Carterinit/* ~/Desktop/NV/
 
     cd ~/Desktop/NV/
     chmod +x *.sh
