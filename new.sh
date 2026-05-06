@@ -25,7 +25,7 @@ function log() {
 
 # ROS 版本
 ROS1_VERSION="noetic"
-ROS2_VERSION="foxy"
+ROS2_VERSION="humble"
 
 # ROS 密钥
 ROSKEY="https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc"
@@ -74,7 +74,7 @@ function install_ros2() {
 
     sudo apt update
 
-    sudo apt install ros-foxy-desktop -y
+    sudo apt install ros-humble-desktop -y
     sudo apt install python3-pip python3-colcon-common-extensions python3-lark python3-setuptools python3-vcstool python3-argcomplete -y
 
     pip3 install -U argcomplete
@@ -197,7 +197,7 @@ function compile_driver() {
 
     log "开始编译2D雷达ROS包"
 
-    source /opt/ros/foxy/setup.bash
+    source /opt/ros/humble/setup.bash
 
     cp ~/Desktop/NV/sllidar_ros2_dual.rviz ~/Desktop/2D-Lidar/src/sllidar_ros2/rviz
     cp ~/Desktop/NV/view_sllidar_s2e_launch.py ~/Desktop/2D-Lidar/src/sllidar_ros2/launch
@@ -205,7 +205,7 @@ function compile_driver() {
     cd ~/Desktop/2D-Lidar && colcon build --symlink-install
 
     log "开始编译3D雷达驱动"
-    source /opt/ros/foxy/setup.bash
+    source /opt/ros/humble/setup.bash
     cd ~/Desktop/HesaiLidar_General_SDK && mkdir build && cd build && cmake ..
     sudo ln -sf /usr/include/eigen3/Eigen /usr/include/Eigen
     make
