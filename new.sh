@@ -129,14 +129,14 @@ function copy_firmware() {
 
     cd ~/Desktop/NV/
     chmod +x *.sh
-    tar -xvf clash_arm64.tar
+    # tar -xvf clash_arm64.tar
 
-    sudo rm -rf /opt/clash/
-    sudo mv clash /opt
-    cd /opt/clash/
-    sudo ./enable_service.sh
-    sudo systemctl restart clash.service
-    cd ~/Desktop/NV/
+    # sudo rm -rf /opt/clash/
+    # sudo mv clash /opt
+    # cd /opt/clash/
+    # sudo ./enable_service.sh
+    # sudo systemctl restart clash.service
+    # cd ~/Desktop/NV/
 
     # sudo dpkg -i nomachine_8.2.3_3_arm64.deb
     cd /etc/apt/
@@ -229,10 +229,10 @@ function main() {
 
     copy_firmware
     install_tools
-    export http_proxy=http://127.0.0.1:1089
-    export https_proxy=http://127.0.0.1:1089
+    # export http_proxy=http://127.0.0.1:1089
+    # export https_proxy=http://127.0.0.1:1089
 
-    firefox
+    # firefox
     iap_bin
     # install_ros1
     install_ros2
