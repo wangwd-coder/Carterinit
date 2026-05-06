@@ -228,7 +228,7 @@ function main() {
     #获取主机known_hosts
     # ssh-keyscan -H $HOST_IP >>~/.ssh/known_hosts
 
-    copy_firmware
+    # copy_firmware
     install_tools
     # export http_proxy=http://127.0.0.1:1089
     # export https_proxy=http://127.0.0.1:1089
