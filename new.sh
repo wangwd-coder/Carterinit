@@ -240,7 +240,7 @@ function main() {
     # export https_proxy=http://127.0.0.1:1089
 
     # firefox
-    iap_bin
+    # iap_bin
     # install_ros1
     install_ros2
     clone_repos
