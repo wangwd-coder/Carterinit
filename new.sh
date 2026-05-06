@@ -206,20 +206,20 @@ function compile_driver() {
 
     cd ~/Desktop/2D-Lidar && colcon build --symlink-install
 
-    log "开始编译3D雷达驱动"
-    source /opt/ros/humble/setup.bash
-    cd ~/Desktop/HesaiLidar_General_SDK && mkdir build && cd build && cmake ..
-    sudo ln -sf /usr/include/eigen3/Eigen /usr/include/Eigen
-    make
+    # log "开始编译3D雷达驱动"
+    # source /opt/ros/humble/setup.bash
+    # cd ~/Desktop/HesaiLidar_General_SDK && mkdir build && cd build && cmake ..
+    # sudo ln -sf /usr/include/eigen3/Eigen /usr/include/Eigen
+    # make
 
-    log "开始编译3D雷达ROS包"
-    sudo mv ~/Desktop/NV/HesaiLidar_General_ROS-ROS2.zip ~/Desktop/3D-Lidar/src
-    cd ~/Desktop/3D-Lidar/src && unzip HesaiLidar_General_ROS-ROS2.zip && rm -rf HesaiLidar_General_ROS-ROS2.zip
-    mkdir -p ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
-    sudo cp ~/Desktop//NV/default.rviz ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
-    sudo cp ~/Desktop/NV/hesai_lidar_launch.py ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/launch
+    # log "开始编译3D雷达ROS包"
+    # sudo mv ~/Desktop/NV/HesaiLidar_General_ROS-ROS2.zip ~/Desktop/3D-Lidar/src
+    # cd ~/Desktop/3D-Lidar/src && unzip HesaiLidar_General_ROS-ROS2.zip && rm -rf HesaiLidar_General_ROS-ROS2.zip
+    # mkdir -p ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
+    # sudo cp ~/Desktop//NV/default.rviz ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
+    # sudo cp ~/Desktop/NV/hesai_lidar_launch.py ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/launch
 
-    cd ../ && colcon build --symlink-install
+    # cd ../ && colcon build --symlink-install
 
 }
 
