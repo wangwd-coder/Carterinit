@@ -124,8 +124,13 @@ function copy_firmware() {
 
     mkdir -p ~/Desktop/{3D-Lidar,NV}/src
 
-    # 从本地 Carterinit 目录拷贝文件
-    cp -r ~/Carterinit/* ~/Desktop/NV/
+    # 从本地 Carterinit 目录拷贝文件（兼容 sudo 运行）
+    if [ -n "$SUDO_USER" ]; then
+        REAL_HOME=$(eval echo ~$SUDO_USER)
+    else
+        REAL_HOME=$HOME
+    fi
+    cp -r $REAL_HOME/Carterinit/* ~/Desktop/NV/
 
     cd ~/Desktop/NV/
     chmod +x *.sh
