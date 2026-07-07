@@ -1,7 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 set -e
-
-cd /home/nvidia/Desktop/2D-Lidar
-source ./install/setup.bash
-source /opt/ros/foxy/setup.bash
-ros2 launch sllidar_ros2 view_sllidar_s2e_launch.py
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/scripts/2dview.sh" "$@"

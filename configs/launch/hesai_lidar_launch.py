@@ -1,17 +1,23 @@
-
+import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    desktop_dir = os.environ.get('DESKTOP_DIR', os.path.expanduser('~/Desktop'))
+    rviz_config = os.path.join(
+        desktop_dir,
+        '3D-Lidar',
+        'src',
+        'HesaiLidar_General_ROS-ROS2',
+        'rviz2',
+        'default.rviz')
 
     return LaunchDescription([
         Node(
             package ='hesai_lidar',
-            node_namespace ='hesai',
-            #namespace ='hesai',
-            node_executable ='hesai_lidar_node',
-            #executable ='hesai_lidar_node',
+            namespace ='hesai',
+            executable ='hesai_lidar_node',
             name ='hesai_node',
             output ="screen",
             parameters=[
@@ -38,10 +44,9 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             name='rviz2',
-            arguments=['-d', "/home/nvidia/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2/default.rviz"],
+            arguments=['-d', rviz_config],
             output='screen'),
 
     ])
-
 
 

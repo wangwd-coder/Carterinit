@@ -1,96 +1,160 @@
-# Nova Carter Init 工程说明
+# Carterinit
 
-## 项目概述
+Nova Carter 现场辅助初始化工程。这个仓库主要负责基础环境、ROS2、雷达驱动部署、常用测试脚本和离线资源管理；相机 HAWK/OWL、Nova DTB、PTP/NVPPS 等整车 BSP 初始化仍建议使用 NVIDIA 官方 `nova-orin-init` 或旧系统上的 `nova-carter-init`。
 
-本工程用于 Nova Carter/Segway RMP 设备初始化、固件拷贝、LED 固件刷写、ROS2 环境安装以及 2D/3D 雷达驱动编译部署。
+## 目录结构
 
-工程基于以下组件：
-- LED 固件工具：`LED/carter-v2.4-led-main`
-- Segway RMP220 SDK：`RMP220-SDK-2.0.0`
-- 2D 雷达 `sllidar_ros2`
-- 3D 雷达 `HesaiLidar_General_ROS-ROS2`
-- 根目录安装脚本 `new.sh`、`install_novainit.sh`
-
-## 目录结构（关键部分）
-
-- `new.sh`：主安装脚本，自动完成工程拷贝、工具安装、固件升级、ROS2 安装、仓库克隆和驱动编译。
-- `install_novainit.sh`：备用安装脚本，可单独安装 ROS、基础工具、导入源、拷贝固件和驱动。
-- `import_ros_key.sh`：导入 ROS 软件源公钥。
-- `LED/carter-v2.4-led-main/`：LED BLE 固件刷写工具及相关源码。
-- `RMP220-SDK-2.0.0/`：Segway RMP220 SDK 固件、库文件和控制程序。
-- `default.rviz`：3D 雷达 RViz 配置文件。
-- `sllidar_ros2_dual.rviz`：2D 雷达 RViz 配置文件。
-- `hesai_lidar_launch.py`、`view_sllidar_s2e_launch.py`：雷达启动配置脚本。
-
-## 运行前准备
-
-1. 目标主机需为 Ubuntu/Debian 系统，并具备 `sudo` 权限。
-2. 目标主机应能访问互联网，并可连接 ROS 软件源。
-3. 目标主机推荐安装 `sshpass`，`new.sh` 会使用它进行文件拷贝。
-4. 当前工作目录默认使用 `~/Desktop/NV/`，并会在 `~/Desktop/` 下创建或覆盖相关目录。
-5. 本地仓库根目录下的 shell 脚本应具有执行权限：
-
-```bash
-cd /Users/wangweidong/Desktop/个人/test_weidong/NV/Carter_init
-chmod +x *.sh
+```text
+.
+├── new.sh                    # 一键入口
+├── test.sh                   # 兼容入口,调用 scripts/test.sh
+├── 2dview.sh                 # 兼容入口,启动 2D 雷达视图
+├── 3dview.sh                 # 兼容入口,启动 3D 雷达视图
+├── configs/
+│   ├── apt/                  # 可选 apt sources.list
+│   ├── launch/               # 雷达 launch 文件
+│   └── rviz/                 # RViz 配置
+├── packages/                 # 离线 deb/tar/zip 包
+├── scripts/                  # 实际脚本实现
+├── vendor/                   # 第三方 SDK、固件工具、Clash
+└── docs/                     # 刷机等文档
 ```
 
-## `new.sh` 执行流程
+## 一键运行
 
-`new.sh` 的主流程包括：
+默认一键流程只做低风险步骤：
 
-1. 禁用 IPv6：
-   - `sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1`
-   - `sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1`
-   - `sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1`
-2. `copy_firmware`：
-   - 读取目标主机 IP、用户名、密码
-   - 使用 `sshpass` 从目标主机拷贝 `~/Desktop/Code/test_weidong/NV/Carter_init/*` 到本机 `~/Desktop/NV/`
-   - 解压 `clash_arm64.tar` 并启用 `clash` 服务
-   - 复制并替换 `/etc/apt/sources.list`，更新 apt 源
-3. `install_tools`：安装常用依赖工具和库：
-   - `curl`, `openssh-client`, `libpcap-dev`, `libyaml-cpp-dev`, `libpcl-dev`, `libboost-dev`, `libprotobuf-dev`, `protobuf-compiler`
-4. `firefox`：脚本会直接调用 `firefox`，请确认系统已安装 Firefox 浏览器。
-5. `iap_bin`：
-   - 进入 `~/Desktop/NV/LED/carter-v2.4-led-main`
-   - 运行 `bossac_armv8` 进行 LED 固件烧写
-   - 拷贝主控和电机固件到 `/sdcard/firmware`
-   - 执行 `Segway_RMP_Init.sh`
-   - 使用 `ctrl_arm64-v8a` 进行主控和电机固件升级验证
-6. `install_ros2`：安装 ROS2 Foxy，包含 `colcon` 等工具。
-7. `clone_repos`：克隆以下仓库到 `~/Desktop/`：
-   - `HesaiLidar_General_SDK`
-   - `rplidar_sdk`
-   - `sllidar_ros2`
-9. `compile_driver`：
-   - 编译 `rplidar_sdk`
-   - 复制 2D 雷达 RViz 和 launch 文件，编译 `sllidar_ros2`
-   - 编译 3D 雷达 SDK，解压 3D ROS 包，复制 RViz 和 launch 文件，构建 3D 雷达 ROS 包
+```bash
+cd ~/Desktop/Carterinit
+chmod +x *.sh scripts/*.sh
+./new.sh
+```
 
-## 重要注意事项
+默认会执行：
 
-- `new.sh` 假设 `~/Desktop/NV/` 已存在且可写，如果已有旧数据可能被覆盖。
-- `copy_firmware` 里会执行 `sudo rm -rf ~/Desktop/3D-Lidar/ ~/Desktop/NV/ ~/Desktop/rplidar_sdk ~/Desktop/sllidar_ros2 ~/Desktop/2D-Lidar ~/Desktop/HesaiLidar_General_SDK`，请谨慎使用。
-- 脚本中会调用 `firefox`，若目标环境无 GUI 或未安装 Firefox 会失败。
-- `install_ros2` 指定了 `ros-foxy-desktop`，仅在支持 Foxy 的 Ubuntu 版本上测试通过。
-- 目标主机 `sources.list` 会被替换，为国内 ROS 源配置，若你需要恢复原源请提前备份。
-- `import_ros_key.sh` 的功能是导入 ROS 公钥，若系统已无 `apt-key add` 支持，可改为新方式管理密钥。
+```text
+禁用 IPv6
+同步工程到 ~/Desktop/NV
+安装基础工具
+安装 ROS2 Humble
+跳过 apt sources.list 替换
+跳过 LED 固件刷写
+跳过底盘固件升级
+跳过雷达仓库克隆和编译
+跳过安装后测试
+```
 
-## 单独使用说明
+日志位置：
 
-### `install_novainit.sh`
+```bash
+/tmp/carterinit-install.log
+```
 
-该脚本主要用于单独安装和部署：
-- 禁用 IPv6
-- 设置代理变量
-- 安装 `nova-carter-init_1.1.0-1_arm64.deb`
+## 常用开关
 
-它可作为 `new.sh` 的补充脚本，但与你的目标环境和 `.deb` 包版本有关。
+开启 2D 雷达驱动部署：
 
-### `import_ros_key.sh`
+```bash
+ENABLE_LIDAR=true ./new.sh
+```
 
-该脚本把 ROS 公钥写入 apt 密钥环，用于 ROS 源认证。如果系统不再支持 `apt-key`，请使用新的 `trusted.gpg.d` 方式导入公钥。
+同时开启 3D Hesai 雷达 ROS 包部署：
 
-## 参考
+```bash
+ENABLE_LIDAR=true ENABLE_HESAI_3D=true ./new.sh
+```
 
-- 根目录脚本已补齐说明，后续如果要进一步补充，可以把 `LED/` 和 `RMP220-SDK-2.0.0/` 内部 README 的关键命令摘录到根目录。
+安装后自动跑测试：
+
+```bash
+RUN_TEST_AFTER_INSTALL=true ./new.sh
+```
+
+替换 `/etc/apt/sources.list`，默认关闭，确需使用时再开：
+
+```bash
+REPLACE_APT_SOURCES=true ./new.sh
+```
+
+刷写 LED 固件，默认关闭：
+
+```bash
+ENABLE_LED_FIRMWARE=true ./new.sh
+```
+
+升级底盘固件，默认关闭：
+
+```bash
+ENABLE_CHASSIS_FIRMWARE=true ./new.sh
+```
+
+## 测试
+
+```bash
+./test.sh
+```
+
+测试脚本会尽量跑完所有检查，即使某一项失败也会继续输出后续信息。主要检查：
+
+```text
+ROS2 topic list
+Nova preflight checker/run_nova_tests.sh
+/dev/video* 和 /dev/media*
+Argus 摄像头
+media-ctl 相机拓扑摘要
+网络信息
+```
+
+## 雷达视图
+
+2D 雷达：
+
+```bash
+./2dview.sh
+```
+
+3D 雷达：
+
+```bash
+./3dview.sh
+```
+
+两个脚本默认使用：
+
+```text
+ROS2_VERSION=humble
+DESKTOP_DIR=~/Desktop
+```
+
+如需覆盖：
+
+```bash
+ROS2_VERSION=humble DESKTOP_DIR=/home/novafkee/Desktop ./2dview.sh
+```
+
+## Nova 初始化说明
+
+JetPack 6.x 推荐使用 NVIDIA 官方：
+
+```bash
+sudo apt install nova-orin-init
+```
+
+安装时选择：
+
+```text
+nova-carter
+```
+
+旧包 `nova-carter-init_1.1.0-1_arm64.deb` 依赖 JetPack 5.x，JetPack 6.2 上默认不要安装。本仓库的旧包安装脚本默认跳过，只有显式开启时才会安装：
+
+```bash
+ENABLE_NOVA_CARTER_INIT=true ./install_novainit.sh
+```
+
+## 注意
+
+- `new.sh` 不再默认替换系统 apt 源。
+- 雷达和底盘固件默认禁用，避免误操作硬件。
+- 工程会同步到 `~/Desktop/NV`，便于现场统一路径管理。
+- 相机 HAWK/OWL 的 `/dev/video*`、DTB/overlay、Argus 问题不由本仓库单独解决，优先检查 `nova-orin-init` 或对应 JetPack 版本的相机驱动包。

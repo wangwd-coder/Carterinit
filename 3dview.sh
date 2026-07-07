@@ -1,7 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 set -e
-
-cd /home/nvidia/Desktop/3D-Lidar
-source /opt/ros/foxy/setup.bash
-source install/local_setup.bash
-ros2 launch hesai_lidar hesai_lidar_launch.py
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/scripts/3dview.sh" "$@"

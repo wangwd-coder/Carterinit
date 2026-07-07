@@ -1,271 +1,265 @@
 #!/bin/bash
-# 设置退出时遇到错误自动退出
-set -e
+set -euo pipefail
 
-# 修复 sudo 运行时 ~ 路径为 /root 的问题
-if [ -n "$SUDO_USER" ]; then
-    export HOME=$(eval echo ~$SUDO_USER)
+if [ -n "${SUDO_USER:-}" ]; then
+    export HOME="$(eval echo "~$SUDO_USER")"
 fi
 
-# 日志文件
-LOG_FILE=/tmp/install.log
-
-# 脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="$SCRIPT_DIR/configs"
+PACKAGE_DIR="$SCRIPT_DIR/packages"
+VENDOR_DIR="$SCRIPT_DIR/vendor"
+DESKTOP_DIR="${DESKTOP_DIR:-$HOME/Desktop}"
+STAGING_DIR="${STAGING_DIR:-$DESKTOP_DIR/NV}"
+LOG_FILE="${LOG_FILE:-/tmp/carterinit-install.log}"
 
-# 日志记录函数
+ROS2_VERSION="${ROS2_VERSION:-humble}"
+
+# 默认一键流程只做基础环境。需要额外动作时通过环境变量开启。
+RUN_STAGE_PROJECT="${RUN_STAGE_PROJECT:-true}"
+RUN_INSTALL_TOOLS="${RUN_INSTALL_TOOLS:-true}"
+RUN_INSTALL_ROS2="${RUN_INSTALL_ROS2:-true}"
+RUN_TEST_AFTER_INSTALL="${RUN_TEST_AFTER_INSTALL:-false}"
+REPLACE_APT_SOURCES="${REPLACE_APT_SOURCES:-false}"
+ENABLE_LIDAR="${ENABLE_LIDAR:-false}"
+ENABLE_HESAI_3D="${ENABLE_HESAI_3D:-false}"
+ENABLE_LED_FIRMWARE="${ENABLE_LED_FIRMWARE:-false}"
+ENABLE_CHASSIS_FIRMWARE="${ENABLE_CHASSIS_FIRMWARE:-false}"
+
+: >"$LOG_FILE"
+
 function log() {
-    echo $(date +"%Y-%m-%d %H:%M:%S") $1 | tee -a $LOG_FILE
+    echo "$(date +"%Y-%m-%d %H:%M:%S") $*" | tee -a "$LOG_FILE"
 }
 
-# 清空日志文件
->$LOG_FILE
+function is_true() {
+    [ "${1:-false}" = "true" ]
+}
 
-# 读取主机 IP (已不使用 SCP 远程拷贝，如无需可跳过)
-# read -p "请输入主机 IP 地址:" HOST_IP
+function require_file() {
+    if [ ! -e "$1" ]; then
+        log "缺少文件: $1"
+        exit 1
+    fi
+}
 
-# 读取默认用户名
-# read -p "请输入默认用户名:" DEFAULT_USER
+function stage_project() {
+    log "同步工程到 $STAGING_DIR"
 
-# 读取默认密码
-# read -s -p "请输入密码:" DEFAULT_PASSWORD
-# echo
-
-# ROS 版本
-ROS1_VERSION="noetic"
-ROS2_VERSION="humble"
-
-# ROS 密钥
-ROSKEY="https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc"
-
-# ROS 源
-ROS1_REPO="http://packages.ros.org/ros/ubuntu"
-ROS2_REPO="http://packages.ros.org/ros2/ubuntu"
-
-# 临时禁用项：需要恢复时改为 true
-ENABLE_LIDAR=false
-ENABLE_CHASSIS_FIRMWARE=false
-
-# 安装 ROS 1
-function install_ros1() {
-
-    if [ -e "/opt/ros/$ROS1_VERSION" ]; then
-        log "ROS $ROS1_VERSION 已安装,跳过该步骤"
+    if [ "$SCRIPT_DIR" = "$STAGING_DIR" ]; then
+        log "当前目录已经是 $STAGING_DIR,跳过同步"
         return
     fi
 
-    log "开始安装 ROS $ROS1_VERSION"
-
-    sudo apt update
-    sudo sh -c "echo deb $ROS1_REPO $(lsb_release -sc) main > /etc/apt/sources.list.d/ros-latest.list"
-
-    sudo apt install curl -y
-    curl -s $ROSKEY | sudo apt-key add -
-
-    sudo apt update
-    sudo apt install ros-$ROS1_VERSION-desktop-full -y
-
-    log "ROS $ROS1_VERSION 安装完成"
+    rm -rf "$STAGING_DIR"
+    mkdir -p "$STAGING_DIR"
+    (cd "$SCRIPT_DIR" && tar --exclude=.git -cf - .) | (cd "$STAGING_DIR" && tar -xf -)
+    find "$STAGING_DIR" -maxdepth 2 -type f -name "*.sh" -exec chmod +x {} +
 }
 
-# 安装 ROS 2
-function install_ros2() {
-
-    if [ -e "/opt/ros/$ROS2_VERSION" ]; then
-        log "ROS $ROS2_VERSION 已安装,跳过该步骤"
+function configure_apt_sources() {
+    if ! is_true "$REPLACE_APT_SOURCES"; then
+        log "APT sources.list 替换已禁用,跳过该步骤"
         return
     fi
 
-    log "开始安装 ROS $ROS2_VERSION"
-
-    cd ~/Desktop/NV/
-    sudo chmod +x *.sh
-
-    # 导入 ROS GPG 密钥 (keyring 方式)
-    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] $ROS2_REPO $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-    sudo apt update
-
-    sudo apt install ros-humble-desktop -y
-    sudo apt install python3-pip python3-colcon-common-extensions python3-lark python3-setuptools python3-vcstool python3-argcomplete -y
-
-    pip3 install -U argcomplete
-
-    log "ROS $ROS2_VERSION 安装完成"
-
+    require_file "$CONFIG_DIR/apt/sources.list"
+    local backup="/etc/apt/sources.list.bak.$(date +%Y%m%d%H%M%S)"
+    log "备份 /etc/apt/sources.list 到 $backup"
+    sudo cp /etc/apt/sources.list "$backup"
+    sudo cp "$CONFIG_DIR/apt/sources.list" /etc/apt/sources.list
+    sudo apt-get update
 }
 
 function install_tools() {
-
-    # if [ -e "/usr/bin/sshpass" ]; then
-    #     log "SSHPASS 已安装,跳过该步骤"
-    #     return
-    # fi
-
-    log "开始安装基础工具"
+    log "安装基础工具"
     sudo apt update
-    sudo apt install curl openssh-client libpcap-dev libyaml-cpp-dev libpcl-dev libboost-dev libprotobuf-dev protobuf-compiler -y
-
+    sudo apt install -y \
+        build-essential cmake curl git make openssh-client unzip \
+        libboost-dev libpcap-dev libpcl-dev libprotobuf-dev libyaml-cpp-dev \
+        protobuf-compiler \
+        python3-argcomplete python3-colcon-common-extensions python3-lark \
+        python3-pip python3-setuptools python3-vcstool
     log "基础工具安装完成"
 }
 
-# 克隆代码仓库
-function clone_repos() {
-
-    if [ "$ENABLE_LIDAR" != "true" ]; then
-        log "雷达相关仓库克隆已禁用,跳过该步骤"
+function install_ros2() {
+    if [ -e "/opt/ros/$ROS2_VERSION/setup.bash" ]; then
+        log "ROS2 $ROS2_VERSION 已安装,跳过该步骤"
         return
     fi
 
-    log "开始克隆代码仓库"
+    log "安装 ROS2 $ROS2_VERSION"
+    sudo apt update
+    sudo apt install -y curl gnupg lsb-release
 
-    # sudo rm -rf RMP220-SDK
+    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+        -o /usr/share/keyrings/ros-archive-keyring.gpg
 
-    # git clone https://github.com/SegwayRoboticsSamples/RMP220-SDK.git
-    cd ~/Desktop
-    git clone https://github.com/HesaiTechnology/HesaiLidar_General_SDK.git
-    git clone https://github.com/Slamtec/rplidar_sdk.git
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -sc) main" |
+        sudo tee /etc/apt/sources.list.d/ros2.list >/dev/null
 
-    mkdir -p ~/Desktop/2D-Lidar/src && cd ~/Desktop/2D-Lidar/src
-
-    git clone https://github.com/Slamtec/sllidar_ros2.git
-
-    log "代码仓库克隆完成"
+    sudo apt update
+    sudo apt install -y "ros-$ROS2_VERSION-desktop"
+    pip3 install -U argcomplete
+    log "ROS2 $ROS2_VERSION 安装完成"
 }
 
-# 拷贝固件
-function copy_firmware() {
+function clone_or_update() {
+    local url="$1"
+    local dir="$2"
 
-    log "开始拷贝固件"
-    sudo rm -rf ~/Desktop/NV/
-
-    mkdir -p ~/Desktop/NV/src
-
-    # 从脚本所在 Carterinit 目录拷贝文件
-    cp -r "$SCRIPT_DIR"/* ~/Desktop/NV/
-
-    cd ~/Desktop/NV/
-    chmod +x *.sh
-    # tar -xvf clash_arm64.tar
-
-    # sudo rm -rf /opt/clash/
-    # sudo mv clash /opt
-    # cd /opt/clash/
-    # sudo ./enable_service.sh
-    # sudo systemctl restart clash.service
-    # cd ~/Desktop/NV/
-
-    # sudo dpkg -i nomachine_8.2.3_3_arm64.deb
-    cd /etc/apt/
-    sudo mv sources.list sources.list.bak
-    sudo cp ~/Desktop/NV/sources.list .
-    sudo apt-get update
-
-    log "固件拷贝完成"
+    if [ -d "$dir/.git" ]; then
+        log "更新 $dir"
+        git -C "$dir" pull --ff-only
+    else
+        log "克隆 $url 到 $dir"
+        git clone "$url" "$dir"
+    fi
 }
 
-function iap_bin() {
-
-    echo "开始刷写LED固件"
-
-    cd ~/Desktop/NV/LED/carter-v2.4-led-main
-    sudo chmod +x bossac_armv8
-    sudo ./bossac_armv8 -a -p /dev/ttyACM0
-    sudo ./bossac_armv8 -p /dev/ttyACM0 -w -v -R -o 0x2000 ../firmware.bin
-
-    if [ "$ENABLE_CHASSIS_FIRMWARE" != "true" ]; then
-        log "底盘固件拷贝和升级已禁用,跳过该步骤"
+function clone_lidar_repos() {
+    if ! is_true "$ENABLE_LIDAR"; then
+        log "雷达仓库克隆已禁用,跳过该步骤"
         return
     fi
 
-    log "拷贝底盘固件"
-    sudo mkdir -p /sdcard/firmware
-    sudo cp ~/Desktop/NV/RMP220-SDK-2.0.0/Firmware/V1/*.bin /sdcard/firmware
-    sudo chmod +x ~/Desktop/NV/RMP220-SDK-2.0.0/LibAPI/exec/{ctrl_arm64-v8a,Segway_RMP_Init.sh}
-    bash ~/Desktop/NV/RMP220-SDK-2.0.0/LibAPI/exec/Segway_RMP_Init.sh
-
-    log "开始升级"
-    cd ~/Desktop/NV/RMP220-SDK-2.0.0/LibAPI/exec/
-    central_output=$(./ctrl_arm64-v8a c -iap central)
-    if [[ "$central_output" == *"Iap_success!"* ]]; then
-        log "主控固件升级成功"
-    else
-        log "主控固件升级失败"
-    fi
-
-    motor_output=$(./ctrl_arm64-v8a c -iap motor)
-
-    if [[ "$motor_output" == *"100"* ]]; then
-        log "电机固件升级成功"
-    else
-        log "电机固件升级失败"
-    fi
-    # log "开始安装Nova-Carter-init"
-    # cd ~/Desktop/NV/
-    # sudo apt install ./nova-carter-init_1.1.0-1_arm64.deb -y
-
+    mkdir -p "$DESKTOP_DIR/2D-Lidar/src"
+    clone_or_update https://github.com/HesaiTechnology/HesaiLidar_General_SDK.git "$DESKTOP_DIR/HesaiLidar_General_SDK"
+    clone_or_update https://github.com/Slamtec/rplidar_sdk.git "$DESKTOP_DIR/rplidar_sdk"
+    clone_or_update https://github.com/Slamtec/sllidar_ros2.git "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2"
 }
 
-function compile_driver() {
-
-    if [ "$ENABLE_LIDAR" != "true" ]; then
+function compile_lidar_drivers() {
+    if ! is_true "$ENABLE_LIDAR"; then
         log "雷达驱动编译已禁用,跳过该步骤"
         return
     fi
 
-    log "开始编译2D雷达驱动"
+    require_file "/opt/ros/$ROS2_VERSION/setup.bash"
+    source "/opt/ros/$ROS2_VERSION/setup.bash"
 
-    cd ~/Desktop/rplidar_sdk && make
+    log "编译 2D 雷达 rplidar_sdk"
+    make -C "$DESKTOP_DIR/rplidar_sdk"
 
-    log "开始编译2D雷达ROS包"
+    log "配置并编译 2D 雷达 ROS2 包"
+    mkdir -p "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/rviz" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/launch"
+    cp "$CONFIG_DIR/rviz/sllidar_ros2_dual.rviz" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/rviz/"
+    cp "$CONFIG_DIR/launch/view_sllidar_s2e_launch.py" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/launch/"
+    (cd "$DESKTOP_DIR/2D-Lidar" && colcon build --symlink-install)
 
-    source /opt/ros/humble/setup.bash
+    if is_true "$ENABLE_HESAI_3D"; then
+        log "编译 3D 雷达 SDK"
+        mkdir -p "$DESKTOP_DIR/HesaiLidar_General_SDK/build"
+        (cd "$DESKTOP_DIR/HesaiLidar_General_SDK/build" && cmake .. && make -j"$(nproc)")
 
-    cp ~/Desktop/NV/sllidar_ros2_dual.rviz ~/Desktop/2D-Lidar/src/sllidar_ros2/rviz
-    cp ~/Desktop/NV/view_sllidar_s2e_launch.py ~/Desktop/2D-Lidar/src/sllidar_ros2/launch
-
-    cd ~/Desktop/2D-Lidar && colcon build --symlink-install
-
-    # log "开始编译3D雷达驱动"
-    # source /opt/ros/humble/setup.bash
-    # cd ~/Desktop/HesaiLidar_General_SDK && mkdir build && cd build && cmake ..
-    # sudo ln -sf /usr/include/eigen3/Eigen /usr/include/Eigen
-    # make
-
-    # log "开始编译3D雷达ROS包"
-    # sudo mv ~/Desktop/NV/HesaiLidar_General_ROS-ROS2.zip ~/Desktop/3D-Lidar/src
-    # cd ~/Desktop/3D-Lidar/src && unzip HesaiLidar_General_ROS-ROS2.zip && rm -rf HesaiLidar_General_ROS-ROS2.zip
-    # mkdir -p ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
-    # sudo cp ~/Desktop//NV/default.rviz ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/rviz2
-    # sudo cp ~/Desktop/NV/hesai_lidar_launch.py ~/Desktop/3D-Lidar/src/HesaiLidar_General_ROS-ROS2/launch
-
-    # cd ../ && colcon build --symlink-install
-
+        log "配置并编译 3D 雷达 ROS2 包"
+        mkdir -p "$DESKTOP_DIR/3D-Lidar/src"
+        cp "$PACKAGE_DIR/HesaiLidar_General_ROS-ROS2.zip" "$DESKTOP_DIR/3D-Lidar/src/"
+        (
+            cd "$DESKTOP_DIR/3D-Lidar/src"
+            rm -rf HesaiLidar_General_ROS-ROS2
+            unzip -q HesaiLidar_General_ROS-ROS2.zip
+            rm -f HesaiLidar_General_ROS-ROS2.zip
+            mkdir -p HesaiLidar_General_ROS-ROS2/rviz2 HesaiLidar_General_ROS-ROS2/launch
+            cp "$CONFIG_DIR/rviz/default.rviz" HesaiLidar_General_ROS-ROS2/rviz2/
+            cp "$CONFIG_DIR/launch/hesai_lidar_launch.py" HesaiLidar_General_ROS-ROS2/launch/
+        )
+        (cd "$DESKTOP_DIR/3D-Lidar" && colcon build --symlink-install)
+    fi
 }
 
-# 主函数
+function flash_led_firmware() {
+    if ! is_true "$ENABLE_LED_FIRMWARE"; then
+        log "LED 固件刷写已禁用,跳过该步骤"
+        return
+    fi
+
+    log "刷写 LED 固件"
+    require_file "$VENDOR_DIR/LED/carter-v2.4-led-main/bossac_armv8"
+    require_file "$VENDOR_DIR/LED/firmware.bin"
+    (
+        cd "$VENDOR_DIR/LED/carter-v2.4-led-main"
+        sudo chmod +x bossac_armv8
+        sudo ./bossac_armv8 -a -p /dev/ttyACM0
+        sudo ./bossac_armv8 -p /dev/ttyACM0 -w -v -R -o 0x2000 ../firmware.bin
+    )
+}
+
+function update_chassis_firmware() {
+    if ! is_true "$ENABLE_CHASSIS_FIRMWARE"; then
+        log "底盘固件拷贝和升级已禁用,跳过该步骤"
+        return
+    fi
+
+    log "升级底盘固件"
+    require_file "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec/ctrl_arm64-v8a"
+    require_file "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec/Segway_RMP_Init.sh"
+
+    sudo mkdir -p /sdcard/firmware
+    sudo cp "$VENDOR_DIR"/RMP220-SDK-2.0.0/Firmware/V1/*.bin /sdcard/firmware/
+    sudo chmod +x "$VENDOR_DIR"/RMP220-SDK-2.0.0/LibAPI/exec/{ctrl_arm64-v8a,Segway_RMP_Init.sh}
+    bash "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec/Segway_RMP_Init.sh"
+
+    (
+        cd "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec"
+        central_output=$(./ctrl_arm64-v8a c -iap central)
+        if [[ "$central_output" == *"Iap_success!"* ]]; then
+            log "主控固件升级成功"
+        else
+            log "主控固件升级失败"
+        fi
+
+        motor_output=$(./ctrl_arm64-v8a c -iap motor)
+        if [[ "$motor_output" == *"100"* ]]; then
+            log "电机固件升级成功"
+        else
+            log "电机固件升级失败"
+        fi
+    )
+}
+
+function run_tests() {
+    if ! is_true "$RUN_TEST_AFTER_INSTALL"; then
+        log "安装后测试已禁用,跳过该步骤"
+        return
+    fi
+
+    log "运行 test.sh"
+    "$SCRIPT_DIR/scripts/test.sh" || log "test.sh 返回非零状态,请查看上方输出"
+}
+
 function main() {
-    log "禁用IPv6"
+    sudo -v
+
+    log "开始 Carterinit 一键流程"
+    log "配置: ROS2_VERSION=$ROS2_VERSION ENABLE_LIDAR=$ENABLE_LIDAR ENABLE_HESAI_3D=$ENABLE_HESAI_3D"
+
     sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
     sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
     sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1
 
-    # sudo apt remove -y nova-carter-init
-    #获取主机known_hosts
-    # ssh-keyscan -H $HOST_IP >>~/.ssh/known_hosts
+    if is_true "$RUN_STAGE_PROJECT"; then
+        stage_project
+    fi
 
-    copy_firmware
-    install_tools
+    configure_apt_sources
 
-    # firefox
-    # iap_bin
-    # install_ros1
-    install_ros2
-    clone_repos
-    compile_driver
+    if is_true "$RUN_INSTALL_TOOLS"; then
+        install_tools
+    fi
 
+    if is_true "$RUN_INSTALL_ROS2"; then
+        install_ros2
+    fi
+
+    flash_led_firmware
+    update_chassis_firmware
+    clone_lidar_repos
+    compile_lidar_drivers
+    run_tests
+
+    log "Carterinit 一键流程完成,日志: $LOG_FILE"
 }
 
-main
+main "$@"
