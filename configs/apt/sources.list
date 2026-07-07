@@ -1,4 +1,4 @@
-# Ubuntu ARM64 官方源 (ports.ubuntu.com)
+# Ubuntu ARM64 official repositories (ports.ubuntu.com)
 deb http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted universe multiverse
 deb http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main restricted universe multiverse

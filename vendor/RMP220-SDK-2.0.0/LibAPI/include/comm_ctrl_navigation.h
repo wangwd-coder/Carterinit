@@ -16,8 +16,8 @@ extern "C" {
 #define Chassis_Data_Odom_Euler_xy		4
 #define Chassis_Data_Odom_Euler_z		5
 #define Chassis_Data_Odom_Linevel_xy	6
-#define Chassis_Data_Imu_Gyr            7	//IMU Gyroscope data 陀螺仪数据上报
-#define Chassis_Data_Imu_Acc            8	//IMU Accelerometer data 加速度计数据上�?
+#define Chassis_Data_Imu_Gyr            7	// IMU gyroscope data report
+#define Chassis_Data_Imu_Acc            8	// IMU accelerometer data report
 
 //-----------------------Event---------------------------------------------
 #define ChassisBootReadyEvent  		1	// Chassis central control boot OK

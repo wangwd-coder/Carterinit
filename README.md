@@ -1,28 +1,28 @@
 # Carterinit
 
-Nova Carter 现场辅助初始化工程。这个仓库主要负责基础环境、ROS2、雷达驱动部署、常用测试脚本和离线资源管理；相机 HAWK/OWL、Nova DTB、PTP/NVPPS 等整车 BSP 初始化仍建议使用 NVIDIA 官方 `nova-orin-init` 或旧系统上的 `nova-carter-init`。
+Field setup helper for Nova Carter. This repository manages base packages, ROS2, lidar driver deployment, test scripts, and local offline resources. Full vehicle BSP setup such as HAWK/OWL cameras, Nova DTB overlays, PTP, and NVPPS should still be handled by NVIDIA `nova-orin-init` or by the legacy `nova-carter-init` package on compatible JetPack 5.x systems.
 
-## 目录结构
+## Layout
 
 ```text
 .
-├── new.sh                    # 一键入口
-├── test.sh                   # 兼容入口,调用 scripts/test.sh
-├── 2dview.sh                 # 兼容入口,启动 2D 雷达视图
-├── 3dview.sh                 # 兼容入口,启动 3D 雷达视图
+├── new.sh                    # One-command setup entrypoint
+├── test.sh                   # Compatibility wrapper for scripts/test.sh
+├── 2dview.sh                 # Compatibility wrapper for the 2D lidar view
+├── 3dview.sh                 # Compatibility wrapper for the 3D lidar view
 ├── configs/
-│   ├── apt/                  # 可选 apt sources.list
-│   ├── launch/               # 雷达 launch 文件
-│   └── rviz/                 # RViz 配置
-├── packages/                 # 离线 deb/tar/zip 包
-├── scripts/                  # 实际脚本实现
-├── vendor/                   # 第三方 SDK、固件工具、Clash
-└── docs/                     # 刷机等文档
+│   ├── apt/                  # Optional apt sources.list
+│   ├── launch/               # Lidar launch files
+│   └── rviz/                 # RViz configs
+├── packages/                 # Offline deb/tar/zip packages
+├── scripts/                  # Script implementations
+├── vendor/                   # Third-party SDKs, firmware tools, and Clash
+└── docs/                     # Flashing and field notes
 ```
 
-## 一键运行
+## One-Command Setup
 
-默认一键流程只做低风险步骤：
+The default flow only runs low-risk setup steps:
 
 ```bash
 cd ~/Desktop/Carterinit
@@ -30,132 +30,132 @@ chmod +x *.sh scripts/*.sh
 ./new.sh
 ```
 
-默认会执行：
+The default flow does this:
 
 ```text
-禁用 IPv6
-同步工程到 ~/Desktop/NV
-安装基础工具
-按系统版本安装 ROS2：Ubuntu 20.04 使用 Foxy，Ubuntu 22.04 使用 Humble
-跳过 apt sources.list 替换
-跳过 LED 固件刷写
-跳过底盘固件升级
-跳过雷达仓库克隆和编译
-跳过安装后测试
+Disable IPv6
+Sync the project to ~/Desktop/NV
+Install base tools
+Install ROS2 by Ubuntu release: Foxy on Ubuntu 20.04, Humble on Ubuntu 22.04
+Skip apt sources.list replacement
+Skip LED firmware flashing
+Skip chassis firmware update
+Skip lidar repository cloning and build
+Skip post-install tests
 ```
 
-日志位置：
+Log file:
 
 ```bash
 /tmp/carterinit-install.log
 ```
 
-## 常用开关
+## Common Switches
 
-开启 2D 雷达驱动部署：
+Enable 2D lidar driver deployment:
 
 ```bash
 ENABLE_LIDAR=true ./new.sh
 ```
 
-同时开启 3D Hesai 雷达 ROS 包部署：
+Enable both 2D lidar and 3D Hesai ROS package deployment:
 
 ```bash
 ENABLE_LIDAR=true ENABLE_HESAI_3D=true ./new.sh
 ```
 
-安装后自动跑测试：
+Run tests after installation:
 
 ```bash
 RUN_TEST_AFTER_INSTALL=true ./new.sh
 ```
 
-替换 `/etc/apt/sources.list`，默认关闭，确需使用时再开：
+Replace `/etc/apt/sources.list`. This is disabled by default and should only be enabled when needed:
 
 ```bash
 REPLACE_APT_SOURCES=true ./new.sh
 ```
 
-刷写 LED 固件，默认关闭：
+Flash LED firmware. This is disabled by default:
 
 ```bash
 ENABLE_LED_FIRMWARE=true ./new.sh
 ```
 
-升级底盘固件，默认关闭：
+Update chassis firmware. This is disabled by default:
 
 ```bash
 ENABLE_CHASSIS_FIRMWARE=true ./new.sh
 ```
 
-## 测试
+## Tests
 
 ```bash
 ./test.sh
 ```
 
-测试脚本会尽量跑完所有检查，即使某一项失败也会继续输出后续信息。主要检查：
+The test script tries to finish all checks even if one item fails. It checks:
 
 ```text
 ROS2 topic list
 Nova preflight checker/run_nova_tests.sh
-/dev/video* 和 /dev/media*
-Argus 摄像头
-media-ctl 相机拓扑摘要
-网络信息
+/dev/video* and /dev/media*
+Argus camera
+media-ctl camera topology summary
+Network information
 ```
 
-## 雷达视图
+## Lidar Views
 
-2D 雷达：
+2D lidar:
 
 ```bash
 ./2dview.sh
 ```
 
-3D 雷达：
+3D lidar:
 
 ```bash
 ./3dview.sh
 ```
 
-两个脚本默认使用：
+The view scripts use these defaults:
 
 ```text
-Ubuntu 20.04 自动使用 ROS2 Foxy
-Ubuntu 22.04 自动使用 ROS2 Humble
+Ubuntu 20.04 automatically uses ROS2 Foxy
+Ubuntu 22.04 automatically uses ROS2 Humble
 DESKTOP_DIR=~/Desktop
 ```
 
-如需覆盖：
+Override when needed:
 
 ```bash
 ROS2_VERSION=foxy DESKTOP_DIR=/home/nvidia/Desktop ./2dview.sh
 ```
 
-## Nova 初始化说明
+## Nova Setup
 
-JetPack 6.x 推荐使用 NVIDIA 官方：
+For JetPack 6.x, use NVIDIA's official package:
 
 ```bash
 sudo apt install nova-orin-init
 ```
 
-安装时选择：
+Select this profile during installation:
 
 ```text
 nova-carter
 ```
 
-旧包 `nova-carter-init_1.1.0-1_arm64.deb` 依赖 JetPack 5.x，JetPack 6.2 上默认不要安装。本仓库的旧包安装脚本默认跳过，只有显式开启时才会安装：
+The legacy package `nova-carter-init_1.1.0-1_arm64.deb` depends on JetPack 5.x and should not be installed on JetPack 6.2 by default. This repository's legacy package wrapper skips it unless explicitly enabled:
 
 ```bash
 ENABLE_NOVA_CARTER_INIT=true ./install_novainit.sh
 ```
 
-## 注意
+## Notes
 
-- `new.sh` 不再默认替换系统 apt 源。
-- 雷达和底盘固件默认禁用，避免误操作硬件。
-- 工程会同步到 `~/Desktop/NV`，便于现场统一路径管理。
-- 相机 HAWK/OWL 的 `/dev/video*`、DTB/overlay、Argus 问题不由本仓库单独解决，优先检查 `nova-orin-init` 或对应 JetPack 版本的相机驱动包。
+- `new.sh` no longer replaces system apt sources by default.
+- Lidar and chassis firmware actions are disabled by default to avoid unintended hardware changes.
+- The project is synced to `~/Desktop/NV` for consistent field paths.
+- HAWK/OWL camera issues involving `/dev/video*`, DTB overlays, and Argus are not solved by this repository alone. Check `nova-orin-init` or the camera driver package that matches the JetPack version.

@@ -26,7 +26,7 @@ if [ -z "${ROS2_VERSION:-}" ]; then
     esac
 fi
 
-# 默认一键流程只做基础环境。需要额外动作时通过环境变量开启。
+# The default one-command flow only runs low-risk setup steps.
 RUN_STAGE_PROJECT="${RUN_STAGE_PROJECT:-true}"
 RUN_INSTALL_TOOLS="${RUN_INSTALL_TOOLS:-true}"
 RUN_INSTALL_ROS2="${RUN_INSTALL_ROS2:-true}"
@@ -49,16 +49,16 @@ function is_true() {
 
 function require_file() {
     if [ ! -e "$1" ]; then
-        log "缺少文件: $1"
+        log "Missing required file: $1"
         exit 1
     fi
 }
 
 function stage_project() {
-    log "同步工程到 $STAGING_DIR"
+    log "Syncing project to $STAGING_DIR"
 
     if [ "$SCRIPT_DIR" = "$STAGING_DIR" ]; then
-        log "当前目录已经是 $STAGING_DIR,跳过同步"
+        log "Current directory is already $STAGING_DIR; skipping project sync"
         return
     fi
 
@@ -70,36 +70,36 @@ function stage_project() {
 
 function configure_apt_sources() {
     if ! is_true "$REPLACE_APT_SOURCES"; then
-        log "APT sources.list 替换已禁用,跳过该步骤"
+        log "APT sources.list replacement is disabled; skipping"
         return
     fi
 
     require_file "$CONFIG_DIR/apt/sources.list"
     local backup="/etc/apt/sources.list.bak.$(date +%Y%m%d%H%M%S)"
-    log "备份 /etc/apt/sources.list 到 $backup"
+    log "Backing up /etc/apt/sources.list to $backup"
     sudo cp /etc/apt/sources.list "$backup"
     sudo cp "$CONFIG_DIR/apt/sources.list" /etc/apt/sources.list
     sudo apt-get update
 }
 
 function install_tools() {
-    log "安装基础工具"
+    log "Installing base tools"
     sudo apt update
     sudo apt install -y \
         build-essential cmake curl git make openssh-client unzip \
         libboost-dev libpcap-dev libpcl-dev libprotobuf-dev libyaml-cpp-dev \
         protobuf-compiler \
         python3-pip python3-setuptools python3-venv
-    log "基础工具安装完成"
+    log "Base tools installed"
 }
 
 function install_ros2() {
     if [ -e "/opt/ros/$ROS2_VERSION/setup.bash" ]; then
-        log "ROS2 $ROS2_VERSION 已安装,跳过该步骤"
+        log "ROS2 $ROS2_VERSION is already installed; skipping"
         return
     fi
 
-    log "安装 ROS2 $ROS2_VERSION"
+    log "Installing ROS2 $ROS2_VERSION"
     sudo apt update
     sudo apt install -y curl gnupg lsb-release
 
@@ -114,8 +114,8 @@ function install_ros2() {
         "ros-$ROS2_VERSION-desktop" \
         python3-argcomplete python3-colcon-common-extensions python3-lark \
         python3-vcstool
-    pip3 install -U argcomplete || log "pip argcomplete 更新失败,继续后续流程"
-    log "ROS2 $ROS2_VERSION 安装完成"
+    pip3 install -U argcomplete || log "pip argcomplete update failed; continuing"
+    log "ROS2 $ROS2_VERSION installed"
 }
 
 function clone_or_update() {
@@ -123,17 +123,17 @@ function clone_or_update() {
     local dir="$2"
 
     if [ -d "$dir/.git" ]; then
-        log "更新 $dir"
+        log "Updating $dir"
         git -C "$dir" pull --ff-only
     else
-        log "克隆 $url 到 $dir"
+        log "Cloning $url into $dir"
         git clone "$url" "$dir"
     fi
 }
 
 function clone_lidar_repos() {
     if ! is_true "$ENABLE_LIDAR"; then
-        log "雷达仓库克隆已禁用,跳过该步骤"
+        log "Lidar repository cloning is disabled; skipping"
         return
     fi
 
@@ -145,28 +145,28 @@ function clone_lidar_repos() {
 
 function compile_lidar_drivers() {
     if ! is_true "$ENABLE_LIDAR"; then
-        log "雷达驱动编译已禁用,跳过该步骤"
+        log "Lidar driver build is disabled; skipping"
         return
     fi
 
     require_file "/opt/ros/$ROS2_VERSION/setup.bash"
     source "/opt/ros/$ROS2_VERSION/setup.bash"
 
-    log "编译 2D 雷达 rplidar_sdk"
+    log "Building 2D lidar rplidar_sdk"
     make -C "$DESKTOP_DIR/rplidar_sdk"
 
-    log "配置并编译 2D 雷达 ROS2 包"
+    log "Configuring and building 2D lidar ROS2 package"
     mkdir -p "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/rviz" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/launch"
     cp "$CONFIG_DIR/rviz/sllidar_ros2_dual.rviz" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/rviz/"
     cp "$CONFIG_DIR/launch/view_sllidar_s2e_launch.py" "$DESKTOP_DIR/2D-Lidar/src/sllidar_ros2/launch/"
     (cd "$DESKTOP_DIR/2D-Lidar" && colcon build --symlink-install)
 
     if is_true "$ENABLE_HESAI_3D"; then
-        log "编译 3D 雷达 SDK"
+        log "Building 3D lidar SDK"
         mkdir -p "$DESKTOP_DIR/HesaiLidar_General_SDK/build"
         (cd "$DESKTOP_DIR/HesaiLidar_General_SDK/build" && cmake .. && make -j"$(nproc)")
 
-        log "配置并编译 3D 雷达 ROS2 包"
+        log "Configuring and building 3D lidar ROS2 package"
         mkdir -p "$DESKTOP_DIR/3D-Lidar/src"
         cp "$PACKAGE_DIR/HesaiLidar_General_ROS-ROS2.zip" "$DESKTOP_DIR/3D-Lidar/src/"
         (
@@ -184,11 +184,11 @@ function compile_lidar_drivers() {
 
 function flash_led_firmware() {
     if ! is_true "$ENABLE_LED_FIRMWARE"; then
-        log "LED 固件刷写已禁用,跳过该步骤"
+        log "LED firmware flashing is disabled; skipping"
         return
     fi
 
-    log "刷写 LED 固件"
+    log "Flashing LED firmware"
     require_file "$VENDOR_DIR/LED/carter-v2.4-led-main/bossac_armv8"
     require_file "$VENDOR_DIR/LED/firmware.bin"
     (
@@ -201,11 +201,11 @@ function flash_led_firmware() {
 
 function update_chassis_firmware() {
     if ! is_true "$ENABLE_CHASSIS_FIRMWARE"; then
-        log "底盘固件拷贝和升级已禁用,跳过该步骤"
+        log "Chassis firmware copy and update are disabled; skipping"
         return
     fi
 
-    log "升级底盘固件"
+    log "Updating chassis firmware"
     require_file "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec/ctrl_arm64-v8a"
     require_file "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec/Segway_RMP_Init.sh"
 
@@ -218,35 +218,35 @@ function update_chassis_firmware() {
         cd "$VENDOR_DIR/RMP220-SDK-2.0.0/LibAPI/exec"
         central_output=$(./ctrl_arm64-v8a c -iap central)
         if [[ "$central_output" == *"Iap_success!"* ]]; then
-            log "主控固件升级成功"
+            log "Central controller firmware update succeeded"
         else
-            log "主控固件升级失败"
+            log "Central controller firmware update failed"
         fi
 
         motor_output=$(./ctrl_arm64-v8a c -iap motor)
         if [[ "$motor_output" == *"100"* ]]; then
-            log "电机固件升级成功"
+            log "Motor firmware update succeeded"
         else
-            log "电机固件升级失败"
+            log "Motor firmware update failed"
         fi
     )
 }
 
 function run_tests() {
     if ! is_true "$RUN_TEST_AFTER_INSTALL"; then
-        log "安装后测试已禁用,跳过该步骤"
+        log "Post-install tests are disabled; skipping"
         return
     fi
 
-    log "运行 test.sh"
-    "$SCRIPT_DIR/scripts/test.sh" || log "test.sh 返回非零状态,请查看上方输出"
+    log "Running test.sh"
+    "$SCRIPT_DIR/scripts/test.sh" || log "test.sh returned a non-zero status; check the output above"
 }
 
 function main() {
     sudo -v
 
-    log "开始 Carterinit 一键流程"
-    log "配置: UBUNTU_CODENAME=$UBUNTU_CODENAME ROS2_VERSION=$ROS2_VERSION ENABLE_LIDAR=$ENABLE_LIDAR ENABLE_HESAI_3D=$ENABLE_HESAI_3D"
+    log "Starting Carterinit one-command setup"
+    log "Config: UBUNTU_CODENAME=$UBUNTU_CODENAME ROS2_VERSION=$ROS2_VERSION ENABLE_LIDAR=$ENABLE_LIDAR ENABLE_HESAI_3D=$ENABLE_HESAI_3D"
 
     sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
     sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
@@ -272,7 +272,7 @@ function main() {
     compile_lidar_drivers
     run_tests
 
-    log "Carterinit 一键流程完成,日志: $LOG_FILE"
+    log "Carterinit setup completed; log: $LOG_FILE"
 }
 
 main "$@"

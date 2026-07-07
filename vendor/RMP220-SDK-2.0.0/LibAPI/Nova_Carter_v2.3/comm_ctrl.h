@@ -85,9 +85,9 @@ int32_t IapSingerBoard(char * path,char * boradname,char* version);
 char* GetGxHardVersion(void);
 void TracePrint_Switch(bool status);  //true  or false
 void SetNavigationStatus(uint8_t status);
-void setSaveRecordCmd(void);    //开始保存log接口　　　　　ps:上层调用
-void clearRecordCmd(void);      //清除保存log命令　　　　　ps:上层不需要调�?so每次保存完log后会自动调用
-uint8_t getSaveRecordCmd(void); //获取是否开始保存log　　　ps:so自动调用,上层不需要调�?
+void setSaveRecordCmd(void);    // Start log save command; called by the upper layer
+void clearRecordCmd(void);      // Clear log save command; called automatically after each log save
+uint8_t getSaveRecordCmd(void); // Get log save command status; called automatically by the shared library
 uint8_t GetNavigationStatus(void);
 
 
@@ -119,7 +119,7 @@ uint8_t get_comu_interface_serial0_can1();
 void showHostBuildTime(void);
 void showChassisCentralBuildTime(void);
 
-/* 暂时不开放此接口，由于map表只能发送整数，故此接口待修改：乘以10或�?00下发，电机板收到命令数据后再恢复数据 */
+/* This interface is not currently exposed. The map table can only send integers, so this interface needs to be revised by scaling values before sending and restoring them on the motor board. */
 uint8_t  set_cmd_acc(double linear_x_acc, double linear_x_brake_acc, double angular_z_acc);//Set the linear and angular accelerated speed: m/s2 ; rad/s2.
 
 uint8_t  set_chassis_no_load(void);
