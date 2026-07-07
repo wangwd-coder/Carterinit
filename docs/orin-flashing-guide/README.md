@@ -4,7 +4,33 @@
 
 For JetPack 5.1.2 systems, select JetPack 5.1.2 / Jetson Linux 35.4.1 in SDK Manager.
 
-Some newer SDK Manager releases may no longer show JetPack 5.1.2 in the version list. If JetPack 5.1.2 is missing, use an older SDK Manager release that still lists JetPack 5.1.2, or use an offline/manual NVIDIA package that matches Jetson Linux 35.4.1. Do not select JetPack 6.x when the target setup depends on the legacy `nova-carter-init` package.
+Some newer SDK Manager releases may no longer show JetPack 5.1.2 in the normal version list. Do not select JetPack 6.x when the target setup depends on the legacy `nova-carter-init` package.
+
+If JetPack 5.1.2 is missing:
+
+1. Close SDK Manager.
+2. Start SDK Manager from the host terminal with archived versions enabled:
+
+   ```bash
+   sdkmanager --archived-versions
+   ```
+
+   If this option is not recognized by an older SDK Manager, try the legacy option name:
+
+   ```bash
+   sdkmanager --archivedversions
+   ```
+
+3. Select JetPack 5.1.2 / Jetson Linux 35.4.1 if it appears in the archived list.
+4. If JetPack 5.1.2 still does not appear, install an older SDK Manager release from NVIDIA's SDK Manager archive, then repeat the archived-version command above.
+5. If SDK Manager still cannot provide JetPack 5.1.2, use the manual flashing flow with the Jetson Linux 35.4.1 driver package and sample root filesystem from NVIDIA's JetPack 5.1.2 archive page. After flashing manually, install only the target-side packages needed by the project.
+
+Official NVIDIA references:
+
+- JetPack 5.1.2 archive page: <https://developer.nvidia.com/embedded/jetpack-sdk-512>
+- JetPack archive: <https://developer.nvidia.com/embedded/jetpack-archive>
+- SDK Manager archive: <https://developer.nvidia.com/nvidia-sdk-manager-archive>
+- SDK Manager archived-version option: <https://docs.nvidia.com/sdk-manager/sdkm-command-line-install/index.html>
 
 ### 1. Open SDK Manager on the flashing host.
 
