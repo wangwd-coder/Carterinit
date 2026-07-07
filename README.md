@@ -50,18 +50,15 @@ chmod +x *.sh
    - 复制并替换 `/etc/apt/sources.list`，更新 apt 源
 3. `install_tools`：安装常用依赖工具和库：
    - `curl`, `openssh-client`, `libpcap-dev`, `libyaml-cpp-dev`, `libpcl-dev`, `libboost-dev`, `libprotobuf-dev`, `protobuf-compiler`
-4. 设置代理环境：
-   - `export http_proxy=http://127.0.0.1:1089`
-   - `export https_proxy=http://127.0.0.1:1089`
-5. `firefox`：脚本会直接调用 `firefox`，请确认系统已安装 Firefox 浏览器。
-6. `iap_bin`：
+4. `firefox`：脚本会直接调用 `firefox`，请确认系统已安装 Firefox 浏览器。
+5. `iap_bin`：
    - 进入 `~/Desktop/NV/LED/carter-v2.4-led-main`
    - 运行 `bossac_armv8` 进行 LED 固件烧写
    - 拷贝主控和电机固件到 `/sdcard/firmware`
    - 执行 `Segway_RMP_Init.sh`
    - 使用 `ctrl_arm64-v8a` 进行主控和电机固件升级验证
-7. `install_ros2`：安装 ROS2 Foxy，包含 `colcon` 等工具。
-8. `clone_repos`：克隆以下仓库到 `~/Desktop/`：
+6. `install_ros2`：安装 ROS2 Foxy，包含 `colcon` 等工具。
+7. `clone_repos`：克隆以下仓库到 `~/Desktop/`：
    - `HesaiLidar_General_SDK`
    - `rplidar_sdk`
    - `sllidar_ros2`

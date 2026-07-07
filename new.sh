@@ -258,8 +258,6 @@ function main() {
 
     copy_firmware
     install_tools
-    # export http_proxy=http://127.0.0.1:1089
-    # export https_proxy=http://127.0.0.1:1089
 
     # firefox
     # iap_bin
