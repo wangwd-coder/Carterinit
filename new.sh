@@ -39,6 +39,10 @@ ROSKEY="https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc"
 ROS1_REPO="http://packages.ros.org/ros/ubuntu"
 ROS2_REPO="http://packages.ros.org/ros2/ubuntu"
 
+# 临时禁用项：需要恢复时改为 true
+ENABLE_LIDAR=false
+ENABLE_CHASSIS_FIRMWARE=false
+
 # 安装 ROS 1
 function install_ros1() {
 
@@ -107,6 +111,11 @@ function install_tools() {
 # 克隆代码仓库
 function clone_repos() {
 
+    if [ "$ENABLE_LIDAR" != "true" ]; then
+        log "雷达相关仓库克隆已禁用,跳过该步骤"
+        return
+    fi
+
     log "开始克隆代码仓库"
 
     # sudo rm -rf RMP220-SDK
@@ -127,9 +136,9 @@ function clone_repos() {
 function copy_firmware() {
 
     log "开始拷贝固件"
-    sudo rm -rf ~/Desktop/3D-Lidar/ ~/Desktop/NV/ ~/Desktop/rplidar_sdk ~/Desktop/sllidar_ros2 ~/Desktop/2D-Lidar ~/Desktop/HesaiLidar_General_SDK
+    sudo rm -rf ~/Desktop/NV/
 
-    mkdir -p ~/Desktop/{3D-Lidar,NV}/src
+    mkdir -p ~/Desktop/NV/src
 
     # 从本地 Carterinit 目录拷贝文件
     cp -r ~/Carterinit/* ~/Desktop/NV/
@@ -163,6 +172,11 @@ function iap_bin() {
     sudo ./bossac_armv8 -a -p /dev/ttyACM0
     sudo ./bossac_armv8 -p /dev/ttyACM0 -w -v -R -o 0x2000 ../firmware.bin
 
+    if [ "$ENABLE_CHASSIS_FIRMWARE" != "true" ]; then
+        log "底盘固件拷贝和升级已禁用,跳过该步骤"
+        return
+    fi
+
     log "拷贝底盘固件"
     sudo mkdir -p /sdcard/firmware
     sudo cp ~/Desktop/NV/RMP220-SDK-2.0.0/Firmware/V1/*.bin /sdcard/firmware
@@ -192,6 +206,11 @@ function iap_bin() {
 }
 
 function compile_driver() {
+
+    if [ "$ENABLE_LIDAR" != "true" ]; then
+        log "雷达驱动编译已禁用,跳过该步骤"
+        return
+    fi
 
     log "开始编译2D雷达驱动"
 
