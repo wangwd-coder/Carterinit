@@ -10,6 +10,9 @@ fi
 # 日志文件
 LOG_FILE=/tmp/install.log
 
+# 脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # 日志记录函数
 function log() {
     echo $(date +"%Y-%m-%d %H:%M:%S") $1 | tee -a $LOG_FILE
@@ -140,8 +143,8 @@ function copy_firmware() {
 
     mkdir -p ~/Desktop/NV/src
 
-    # 从本地 Carterinit 目录拷贝文件
-    cp -r ~/Carterinit/* ~/Desktop/NV/
+    # 从脚本所在 Carterinit 目录拷贝文件
+    cp -r "$SCRIPT_DIR"/* ~/Desktop/NV/
 
     cd ~/Desktop/NV/
     chmod +x *.sh
