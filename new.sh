@@ -13,7 +13,18 @@ DESKTOP_DIR="${DESKTOP_DIR:-$HOME/Desktop}"
 STAGING_DIR="${STAGING_DIR:-$DESKTOP_DIR/NV}"
 LOG_FILE="${LOG_FILE:-/tmp/carterinit-install.log}"
 
-ROS2_VERSION="${ROS2_VERSION:-humble}"
+UBUNTU_CODENAME="${UBUNTU_CODENAME:-$(. /etc/os-release && echo "${VERSION_CODENAME:-}")}"
+if [ -z "$UBUNTU_CODENAME" ] && command -v lsb_release >/dev/null 2>&1; then
+    UBUNTU_CODENAME="$(lsb_release -sc)"
+fi
+
+if [ -z "${ROS2_VERSION:-}" ]; then
+    case "$UBUNTU_CODENAME" in
+        focal) ROS2_VERSION="foxy" ;;
+        jammy) ROS2_VERSION="humble" ;;
+        *) ROS2_VERSION="humble" ;;
+    esac
+fi
 
 # 默认一键流程只做基础环境。需要额外动作时通过环境变量开启。
 RUN_STAGE_PROJECT="${RUN_STAGE_PROJECT:-true}"
@@ -78,8 +89,7 @@ function install_tools() {
         build-essential cmake curl git make openssh-client unzip \
         libboost-dev libpcap-dev libpcl-dev libprotobuf-dev libyaml-cpp-dev \
         protobuf-compiler \
-        python3-argcomplete python3-colcon-common-extensions python3-lark \
-        python3-pip python3-setuptools python3-vcstool
+        python3-pip python3-setuptools python3-venv
     log "基础工具安装完成"
 }
 
@@ -100,8 +110,11 @@ function install_ros2() {
         sudo tee /etc/apt/sources.list.d/ros2.list >/dev/null
 
     sudo apt update
-    sudo apt install -y "ros-$ROS2_VERSION-desktop"
-    pip3 install -U argcomplete
+    sudo apt install -y \
+        "ros-$ROS2_VERSION-desktop" \
+        python3-argcomplete python3-colcon-common-extensions python3-lark \
+        python3-vcstool
+    pip3 install -U argcomplete || log "pip argcomplete 更新失败,继续后续流程"
     log "ROS2 $ROS2_VERSION 安装完成"
 }
 
@@ -233,7 +246,7 @@ function main() {
     sudo -v
 
     log "开始 Carterinit 一键流程"
-    log "配置: ROS2_VERSION=$ROS2_VERSION ENABLE_LIDAR=$ENABLE_LIDAR ENABLE_HESAI_3D=$ENABLE_HESAI_3D"
+    log "配置: UBUNTU_CODENAME=$UBUNTU_CODENAME ROS2_VERSION=$ROS2_VERSION ENABLE_LIDAR=$ENABLE_LIDAR ENABLE_HESAI_3D=$ENABLE_HESAI_3D"
 
     sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
     sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1

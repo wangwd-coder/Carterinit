@@ -36,7 +36,7 @@ chmod +x *.sh scripts/*.sh
 禁用 IPv6
 同步工程到 ~/Desktop/NV
 安装基础工具
-安装 ROS2 Humble
+按系统版本安装 ROS2：Ubuntu 20.04 使用 Foxy，Ubuntu 22.04 使用 Humble
 跳过 apt sources.list 替换
 跳过 LED 固件刷写
 跳过底盘固件升级
@@ -122,14 +122,15 @@ media-ctl 相机拓扑摘要
 两个脚本默认使用：
 
 ```text
-ROS2_VERSION=humble
+Ubuntu 20.04 自动使用 ROS2 Foxy
+Ubuntu 22.04 自动使用 ROS2 Humble
 DESKTOP_DIR=~/Desktop
 ```
 
 如需覆盖：
 
 ```bash
-ROS2_VERSION=humble DESKTOP_DIR=/home/novafkee/Desktop ./2dview.sh
+ROS2_VERSION=foxy DESKTOP_DIR=/home/nvidia/Desktop ./2dview.sh
 ```
 
 ## Nova 初始化说明
